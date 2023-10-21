@@ -2,6 +2,16 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 import os
+import argparse
+import time
+
+
+def get_args():
+    parser = argparse.ArgumentParser(description='Download games and store them in S3')
+    parser.add_argument('--bucket_name', type=str, default='chess-dataset', help='Name of bucket')
+    args = parser.parse_args()
+
+    return args
 
 
 def create_bucket(bucket_name, region=None):
@@ -15,7 +25,7 @@ def create_bucket(bucket_name, region=None):
     :return: True if bucket created, else False
     """
 
-    # Create bucket
+    # Create buckets
     try:
         if region is None:
             s3_client = boto3.client('s3')
@@ -54,7 +64,9 @@ def upload_file(file_name, bucket, object_name=None):
     return True
 
 
-if __name__ == '__main__':
+def main(args):
+    create_bucket(args.bucket_name)
+
     # Retrieve the list of existing buckets
     s3 = boto3.client('s3')
     response = s3.list_buckets()
@@ -66,5 +78,8 @@ if __name__ == '__main__':
 
     s3 = boto3.resource('s3')
     client = boto3.client('s3')
-    client.delete_object(Bucket='bughouse-dataset', Key='dump')
-    #s3.Bucket('bughouse-dataset').upload_file("test", "dump/file.txt")
+
+
+if __name__ == '__main__':
+    args = get_args()
+    main(args)
