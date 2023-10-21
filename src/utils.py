@@ -59,7 +59,7 @@ def download_archives(urls):
                                                'Chrome/109.0.0.0'
                              }, )
 
-            t = threading.Thread(target=upload_to_s3, args=(s3, s3path, r.json(),))
+            t = threading.Thread(target=upload_to_s3, args=(s3path, r.json(),))
             t.start()
 
 
