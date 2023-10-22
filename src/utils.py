@@ -2,7 +2,6 @@ import requests
 import boto3
 import json
 import logging
-import time
 import threading
 from botocore.exceptions import ClientError
 from tqdm import tqdm

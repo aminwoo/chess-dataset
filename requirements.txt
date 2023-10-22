@@ -2,3 +2,4 @@ requests
 boto3
 botocore
 tqdm
+chess
