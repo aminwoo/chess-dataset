@@ -1,5 +1,6 @@
 import tensorflow as tf
-import lc0_az_policy_map
+
+from src.features import lc0_az_policy_map
 
 
 class L2WeightDecay(tf.keras.constraints.Constraint):

@@ -1,4 +1,4 @@
-from tf_net import LeelaZeroNet
+from src.models.tf_net import LeelaZeroNet
 import tensorflow as tf
 from argparse import ArgumentParser
 from pathlib import Path
