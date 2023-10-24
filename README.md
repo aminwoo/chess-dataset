@@ -1,8 +1,8 @@
 <div align="center">
 
-  <h3>Blunderfish</h3>
+  <h3>hikaruXmagnusBOT</h3>
 
-  A free, open-source chess engine powered by a neural network.
+  The love child of Magnus and Hikaru powered by machine learning. 
 
 </div>
 
