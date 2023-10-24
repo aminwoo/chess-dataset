@@ -1,3 +1,5 @@
+tensorflow<2.11
+numpy
 requests
 boto3
 botocore

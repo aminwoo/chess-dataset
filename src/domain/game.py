@@ -18,10 +18,13 @@ if __name__ == '__main__':
     game_count = 0
     for obj in bucket.objects.all():
         key = obj.key
+        if 'magnus' not in key and 'hikaru' not in key:
+            continue
+
         body = obj.get()['Body'].read().decode('utf-8')
         games = json.loads(body)['games']
         for game in games:
-            game = Game(**game)
+            game = Game(game['tcn'], game['white'], game['black'])
             game_count += 1
     print(game_count)
 

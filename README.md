@@ -1,2 +1,10 @@
-# Chess Dataset
-Repo to save dataset of chess games to S3 bucket and perform analysis 
+<div align="center">
+
+  <h3>Blunderfish</h3>
+
+  A free, open-source chess engine powered by a neural network.
+
+</div>
+
+## Overview
+
