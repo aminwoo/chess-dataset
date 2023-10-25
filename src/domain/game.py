@@ -1,7 +1,11 @@
-import boto3
 import json
-import logging
-from tcn import tcn_decode
+import chess
+import numpy as np
+from src.features.policy_index import policy_index
+from src.features.board2planes import board2planes, mirrorMove
+from tqdm import tqdm
+from src.domain.tcn import tcn_decode
+from pathlib import Path
 
 
 class Game:
@@ -9,29 +13,59 @@ class Game:
         self.moves = tcn_decode(tcn)
         self.white = white
         self.black = black
+        self.board = chess.Board()
         self.time_control = time_control
+        self.move_ptr = 0
+
+    def over(self):
+        return self.move_ptr >= len(self.moves)
+
+    def next(self):
+        planes = board2planes(self.board)
+        move = self.moves[self.move_ptr]
+        moves_left = len(self.moves) - self.move_ptr
+        self.board.push(move)
+
+        if self.move_ptr % 2 == 0:
+            us = self.white
+            them = self.black
+        else:
+            us = self.black
+            them = self.white
+            move = mirrorMove(move)
+
+        policy = np.zeros(len(policy_index))
+        move_uci = move.uci()
+        if move_uci[-1] == 'n':
+            move_uci = move_uci[:-1]
+
+        policy[policy_index.index(move_uci)] = 1
+
+        if us['result'] == 'win':
+            wdl = (1, 0, 0)
+        elif them['result'] == 'win':
+            wdl = (0, 0, 1)
+        else:
+            wdl = (0, 1, 0)
+
+        self.move_ptr += 1
+        return planes, policy, wdl, moves_left
 
 
 if __name__ == '__main__':
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket('chess-dataset')
-    game_count = 0
-    for obj in bucket.objects.all():
-        key = obj.key
-        if 'magnus' not in key and 'hikaru' not in key:
-            continue
+    files = list(tqdm(Path("../../data/games").glob("**/*"), desc="Files scanned", unit="files"))
+    files = [file for file in files if file.suffix in ".json"]
 
-        body = obj.get()['Body'].read().decode('utf-8')
-        games = json.loads(body)['games']
-        for game in games:
-            game = Game(game['tcn'], game['white'], game['black'])
-            game_count += 1
-    print(game_count)
+    with open(files[0]) as f:
+        data = json.load(f)
 
-    '''s3object = s3.Object('chess-dataset', 'archives/danielnaroditsky/2010-06.json')
-    file_content = s3object.get()['Body'].read().decode('utf-8')
-    json_content = json.loads(file_content)
-    for game in json_content['games']:
-        #print(game.keys())
-        #print(game['tcn'])
-        game = Game(**game)'''
+    print(len(policy_index))
+    results = set()
+    for i in data['games']:
+        results.add(i['white']['result'])
+        results.add(i['black']['result'])
+    print(results)
+    game = Game(data['games'][0]['tcn'], data['games'][0]['white'], data['games'][0]['black'])
+    while not game.over():
+        planes, policy, wdl, moves_left = game.next()
+        print(planes.shape)

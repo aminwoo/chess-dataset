@@ -8,10 +8,6 @@ from src.models.tf_layers import (
 from src.models.tf_losses import policy_loss, value_loss, moves_left_loss
 
 
-def qmix(z, q, q_ratio):
-    return q * q_ratio + z * (1 - q_ratio)
-
-
 class LeelaZeroNet(tf.keras.Model):
     def __init__(
         self,
@@ -22,7 +18,6 @@ class LeelaZeroNet(tf.keras.Model):
         policy_loss_weight,
         value_loss_weight,
         moves_left_loss_weight,
-        q_ratio,
     ):
         super().__init__()
         self.input_reshape = tf.keras.layers.Reshape((112, 8, 8))
@@ -64,7 +59,6 @@ class LeelaZeroNet(tf.keras.Model):
         self.policy_loss_weight = policy_loss_weight
         self.value_loss_weight = value_loss_weight
         self.moves_left_loss_weight = moves_left_loss_weight
-        self.q_ratio = q_ratio
 
     def call(self, inputs, training=None, mask=None):
         flow = self.input_reshape(inputs)
@@ -81,12 +75,11 @@ class LeelaZeroNet(tf.keras.Model):
         )
 
     def train_step(self, inputs):
-        input_planes, policy_target, wdl_target, q_target, moves_left_target = inputs
-        value_target = qmix(wdl_target, q_target, self.q_ratio)
+        input_planes, policy_target, wdl_target, moves_left_target = inputs
         with tf.GradientTape() as tape:
             policy_out, value_out, moves_left_out = self(input_planes)
             p_loss = policy_loss(policy_target, policy_out)
-            v_loss = value_loss(value_target, value_out)
+            v_loss = value_loss(wdl_target, value_out)
             ml_loss = moves_left_loss(moves_left_target, moves_left_out)
             total_loss = (
                 self.policy_loss_weight * p_loss

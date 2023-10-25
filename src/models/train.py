@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_filters", type=int, default=128)
     parser.add_argument("--num_residual_blocks", type=int, default=10)
     parser.add_argument("--se_ratio", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=3e-4)
+    parser.add_argument("--learning_rate", type=float, default=1e-4)
     parser.add_argument("--no_constrain_norms", action="store_true")
     parser.add_argument("--max_grad_norm", type=float, default=5.6)
     parser.add_argument("--mixed_precision", action="store_true")
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # These parameters control the data pipeline
     parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--batch_size", type=int, default=1024)
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=16)
     parser.add_argument("--shuffle_buffer_size", type=int, default=2 ** 19)
     parser.add_argument("--skip_factor", type=int, default=32)
     parser.add_argument("--optimizer", type=str, choices=["adam", "lion"], default="adam")
@@ -44,7 +44,6 @@ if __name__ == "__main__":
     parser.add_argument("--policy_loss_weight", type=float, default=1.0)
     parser.add_argument("--value_loss_weight", type=float, default=1.6)
     parser.add_argument("--moves_left_loss_weight", type=float, default=0.5)
-    parser.add_argument("--q_ratio", type=float, default=0.2)
     args = parser.parse_args()
     if args.mixed_precision:
         tf.keras.mixed_precision.set_global_policy("mixed_float16")
@@ -56,7 +55,6 @@ if __name__ == "__main__":
         policy_loss_weight=args.policy_loss_weight,
         value_loss_weight=args.value_loss_weight,
         moves_left_loss_weight=args.moves_left_loss_weight,
-        q_ratio=args.q_ratio,
     )
     if args.optimizer == "lion":
         try:
@@ -68,7 +66,7 @@ if __name__ == "__main__":
             )
         optimizer = Lion(args.learning_rate, global_clipnorm=args.max_grad_norm)
     else:
-        optimizer = tf.keras.optimizers.legacy.Adam(args.learning_rate, global_clipnorm=args.max_grad_norm)
+        optimizer = tf.keras.optimizers.Adam(args.learning_rate, global_clipnorm=args.max_grad_norm)
     if args.mixed_precision:
         optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
     callbacks = []
@@ -110,4 +108,6 @@ if __name__ == "__main__":
     dataset = tf.data.Dataset.from_generator(
         callable_gen, output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
-    model.fit(dataset, epochs=999, steps_per_epoch=8192, callbacks=callbacks)
+
+    model.fit(dataset, epochs=1, steps_per_epoch=8192, callbacks=callbacks)
+    model.save_weights('./checkpoints/my_checkpoint')

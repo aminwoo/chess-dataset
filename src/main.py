@@ -1,85 +1,32 @@
-import logging
-import boto3
-from botocore.exceptions import ClientError
-import os
-import argparse
-import time
+import chess
+import tensorflow as tf
+from src.models.tf_net import LeelaZeroNet
+from src.features.board2planes import board2planes
+from src.features.policy_index import policy_index
 
+model = LeelaZeroNet(
+    num_filters=128,
+    num_residual_blocks=10,
+    se_ratio=8,
+    constrain_norms=True,
+    policy_loss_weight=1.0,
+    value_loss_weight=1.6,
+    moves_left_loss_weight=0.5,
+)
 
-def get_args():
-    parser = argparse.ArgumentParser(description='Download games and store them in S3')
-    parser.add_argument('--bucket_name', type=str, default='chess-dataset', help='Name of bucket')
-    args = parser.parse_args()
+model.load_weights('../checkpoints/my_checkpoint').expect_partial()
 
-    return args
+board = chess.Board(fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+planes = board2planes(board)
 
+policy_out, value_out, moves_left_out = model(planes)
+print(value_out)
+#out = model(planes)
+#print(out)
 
-def create_bucket(bucket_name, region=None):
-    """Create an S3 bucket in a specified region
+for i in tf.argsort(policy_out, 1, direction='DESCENDING')[0]:
+    print(policy_index[int(i)], policy_out[0][i])
+#idx = int(tf.math.argmax(out[0], 1))
+#print(len(policy_index))
+#print(policy_index[int(tf.math.argmax(out[0], 1))])
 
-    If a region is not specified, the bucket is created in the S3 default
-    region (us-east-1).
-
-    :param bucket_name: Bucket to create
-    :param region: String region to create bucket in, e.g., 'us-west-2'
-    :return: True if bucket created, else False
-    """
-
-    # Create buckets
-    try:
-        if region is None:
-            s3_client = boto3.client('s3')
-            s3_client.create_bucket(Bucket=bucket_name)
-        else:
-            s3_client = boto3.client('s3', region_name=region)
-            location = {'LocationConstraint': region}
-            s3_client.create_bucket(Bucket=bucket_name,
-                                    CreateBucketConfiguration=location)
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
-
-
-def upload_file(file_name, bucket, object_name=None):
-    """Upload a file to an S3 bucket
-
-    :param file_name: File to upload
-    :param bucket: Bucket to upload to
-    :param object_name: S3 object name. If not specified then file_name is used
-    :return: True if file was uploaded, else False
-    """
-
-    # If S3 object_name was not specified, use file_name
-    if object_name is None:
-        object_name = os.path.basename(file_name)
-
-    # Upload the file
-    s3_client = boto3.client('s3')
-    try:
-        response = s3_client.upload_file(file_name, bucket, object_name)
-    except ClientError as e:
-        logging.error(e)
-        return False
-    return True
-
-
-def main(args):
-    create_bucket(args.bucket_name)
-
-    # Retrieve the list of existing buckets
-    s3 = boto3.client('s3')
-    response = s3.list_buckets()
-
-    # Output the bucket names
-    print('Existing buckets:')
-    for bucket in response['Buckets']:
-        print(f'  {bucket["Name"]}')
-
-    s3 = boto3.resource('s3')
-    client = boto3.client('s3')
-
-
-if __name__ == '__main__':
-    args = get_args()
-    main(args)

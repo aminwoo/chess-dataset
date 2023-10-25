@@ -2,29 +2,24 @@ import numpy as np
 from pathlib import Path
 from random import shuffle
 from tqdm import tqdm, trange
-import deflate
-import zstandard
+import json
 from multiprocessing import get_context
 from multiprocessing.shared_memory import SharedMemory
 from numpy.random import default_rng
+from src.data.loader import Loader
 
-RECORD_SIZE = 8356
-ARRAY_SHAPES_WITHOUT_BATCH = [(112, 64), (1858,), (3,), (3,), (1,)]
+ARRAY_SHAPES_WITHOUT_BATCH = [(112, 8, 8), (1858,), (3,), (1,)]
 
 
 def file_generator(file_list, random):
-    zstd_context = zstandard.ZstdDecompressor()
     while True:
         if random:
             shuffle(file_list)
         else:
             file_list = sorted(file_list)
         for file in file_list:
-            # yield gzip.open(file, 'rb').read()
-            if file.name.endswith(".gz"):
-                yield deflate.gzip_decompress(file.read_bytes())
-            elif file.name.endswith(".zst"):
-                yield zstd_context.decompress(file.read_bytes())
+            if file.name.endswith("json"):
+                yield json.load(open(file))
             else:
                 raise RuntimeError("Unknown file type!")
 
@@ -124,38 +119,6 @@ def offset_generator(batch_size, record_size, skip_factor, random):
         initial_offset = next_offset
 
 
-def data_generator(files, batch_size, skip_factor, validation):
-    # This is a singlethreaded generator for debugging
-    file_gen = file_generator(files, random=not validation)
-    offset_gen = offset_generator(
-        batch_size=batch_size,
-        record_size=RECORD_SIZE,
-        skip_factor=skip_factor,
-        random=not validation,
-    )
-    data = np.zeros((batch_size, RECORD_SIZE), dtype=np.uint8)
-    current_file = next(file_gen)
-    file_ptr = 0
-    data_ptr = 0
-    offset = next(offset_gen)
-    while True:
-        if offset + file_ptr < len(current_file):
-            data[data_ptr] = np.frombuffer(
-                current_file[offset + file_ptr: offset + file_ptr + RECORD_SIZE],
-                dtype=np.uint8,
-            )
-            data_ptr += 1
-            if data_ptr == batch_size:
-                yield extract_inputs_outputs_if1(data)
-                data.fill(0)
-                data_ptr = 0
-            file_ptr += offset + RECORD_SIZE
-            offset = next(offset_gen)
-        else:
-            offset -= len(current_file) - file_ptr
-            current_file = next(file_gen)
-            file_ptr = 0
-
 
 def data_worker(
         files,
@@ -173,39 +136,19 @@ def data_worker(
         for shape, mem in zip(array_shapes, shared_mem)
     ]
     file_gen = file_generator(files, random=not validation)
-    offset_gen = offset_generator(
-        batch_size=batch_size,
-        record_size=RECORD_SIZE,
-        skip_factor=skip_factor,
-        random=not validation,
-    )
-    data = np.zeros((batch_size, RECORD_SIZE), dtype=np.uint8)
-    current_file = next(file_gen)
-    file_ptr = 0
-    data_ptr = 0
-    offset = next(offset_gen)
+    loader = Loader(next(file_gen)['games'])
+
     while True:
-        if offset + file_ptr < len(current_file):
-            data[data_ptr] = np.frombuffer(
-                current_file[offset + file_ptr: offset + file_ptr + RECORD_SIZE],
-                dtype=np.uint8,
-            )
-            data_ptr += 1
-            if data_ptr == batch_size:
-                processed_batch = extract_inputs_outputs_if1(data)
-                main_process_access_event.wait()
-                main_process_access_event.clear()
-                for batch_array, shared_array in zip(processed_batch, shared_arrays):
-                    shared_array[:] = batch_array
-                    array_ready_event.set()
-                data.fill(0)
-                data_ptr = 0
-            file_ptr += offset + RECORD_SIZE
-            offset = next(offset_gen)
-        else:
-            offset -= len(current_file) - file_ptr
-            current_file = next(file_gen)
-            file_ptr = 0
+        processed_batch = loader.get()
+        if not processed_batch:
+            loader = Loader(next(file_gen)['games'])
+            continue
+
+        main_process_access_event.wait()
+        main_process_access_event.clear()
+        for batch_array, shared_array in zip(processed_batch, shared_arrays):
+            shared_array[:] = batch_array
+            array_ready_event.set()
 
 
 def multiprocess_generator(
@@ -219,7 +162,7 @@ def multiprocess_generator(
     assert shuffle_buffer_size % batch_size == 0  # This simplifies my life later on
     print("Scanning directory for game data chunks...")
     files = list(tqdm(chunk_dir.glob("**/*"), desc="Files scanned", unit=" files"))
-    files = [file for file in files if file.suffix in (".gz", ".zst")]
+    files = [file for file in files if file.suffix in ".json"]
     if len(files) == 0:
         raise FileNotFoundError("No valid input files!")
     print(f"{len(files)} matching files.")
@@ -320,13 +263,12 @@ def make_callable(chunk_dir, batch_size, num_workers, skip_factor, shuffle_buffe
 
 
 def main():
-    import sys
     import tensorflow as tf
 
-    test_dir = Path(sys.argv[1])
+    test_dir = Path("../../data/games")
     batch_size = 1024
     num_workers = 16
-    shuffle_buffer_size = 2 ** 19
+    shuffle_buffer_size = 2 ** 11
     skip_factor = 32
     gen_callable = make_callable(
         chunk_dir=test_dir,

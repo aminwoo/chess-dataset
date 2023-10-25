@@ -74,7 +74,7 @@ def make_map(kind="matrix"):
                 for c0 in columns:
                     start = c0 + r0
                     end = queen_move(start, direction, steps)
-                    if end == None:
+                    if end is None:
                         moves.append("illegal")
                     else:
                         moves.append(start + end)
@@ -85,7 +85,7 @@ def make_map(kind="matrix"):
             for c0 in columns:
                 start = c0 + r0
                 end = knight_move(start, direction, 1)
-                if end == None:
+                if end is None:
                     moves.append("illegal")
                 else:
                     moves.append(start + end)
@@ -101,7 +101,7 @@ def make_map(kind="matrix"):
                         continue
                     start = c0 + r0
                     end = queen_move(start, direction, 1)
-                    if end == None:
+                    if end is None:
                         moves.append("illegal")
                     else:
                         moves.append(start + end + promotion)
