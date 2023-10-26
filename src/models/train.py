@@ -109,5 +109,5 @@ if __name__ == "__main__":
         callable_gen, output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    model.fit(dataset, epochs=1, steps_per_epoch=8192, callbacks=callbacks)
+    model.fit(dataset, epochs=99, steps_per_epoch=8192, callbacks=callbacks)
     model.save_weights('./checkpoints/my_checkpoint')

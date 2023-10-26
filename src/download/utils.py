@@ -63,6 +63,6 @@ def download_archives(urls):
 
 
 if __name__ == '__main__':
-    players = get_players('../data/players.txt')
+    players = get_players('../../data/players.txt')
     urls = get_archive_urls(players)
     download_archives(urls)
