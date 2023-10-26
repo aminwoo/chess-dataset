@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 class Loader:
     def __init__(self, data):
-        self.games = [Game(obj["tcn"], obj["white"], obj["black"]) for obj in data]
+        self.games = [Game(obj["tcn"], obj["white"], obj["black"]) for obj in data if "tcn" in obj]
         self.game_ptr = 0
 
     def get(self, batch_size=1024):

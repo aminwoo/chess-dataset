@@ -119,7 +119,6 @@ def offset_generator(batch_size, record_size, skip_factor, random):
         initial_offset = next_offset
 
 
-
 def data_worker(
         files,
         batch_size,
@@ -136,12 +135,12 @@ def data_worker(
         for shape, mem in zip(array_shapes, shared_mem)
     ]
     file_gen = file_generator(files, random=not validation)
-    loader = Loader(next(file_gen)['games'])
+    loader = Loader(next(file_gen))
 
     while True:
         processed_batch = loader.get()
         if not processed_batch:
-            loader = Loader(next(file_gen)['games'])
+            loader = Loader(next(file_gen))
             continue
 
         main_process_access_event.wait()
