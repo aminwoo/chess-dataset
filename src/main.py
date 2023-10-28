@@ -5,23 +5,23 @@ import logging
 from src.models.tf_net import LeelaZeroNet
 from src.features.board2planes import board2planes
 from src.features.policy_index import policy_index
-from src.features.board2planes import mirrorMoveUCI
-
-model = LeelaZeroNet(
-    num_filters=128,
-    num_residual_blocks=10,
-    se_ratio=8,
-    constrain_norms=True,
-    policy_loss_weight=1.0,
-    value_loss_weight=1.6,
-    moves_left_loss_weight=0.5,
-)
-
-model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/my_checkpoint').expect_partial()
-board = chess.Board()
+from src.features.board2planes import mirrorMove
 
 
 def main():
+    model = LeelaZeroNet(
+        num_filters=128,
+        num_residual_blocks=10,
+        se_ratio=8,
+        constrain_norms=True,
+        policy_loss_weight=1.0,
+        value_loss_weight=1.6,
+        moves_left_loss_weight=0.5,
+    )
+
+    model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/my_checkpoint').expect_partial()
+    board = chess.Board()
+
     cmd = ""
     while cmd != "quit":
         cmd = input()
@@ -42,10 +42,14 @@ def main():
         if cmd.startswith("go"):
             planes = board2planes(board)
             policy_out, value_out, moves_left_out = model(planes)
-            move_uci = policy_index[int(tf.math.argmax(policy_out, 1))]
-            if board.turn == chess.BLACK:
-                move_uci = mirrorMoveUCI(move_uci)
-            print(f"bestmove {move_uci}")
+            for i in tf.argsort(policy_out, direction="DESCENDING")[0]:
+                move_uci = policy_index[int(i)]
+                move = chess.Move.from_uci(move_uci)
+                if board.turn == chess.BLACK:
+                    move = mirrorMove(move)
+                if board.is_legal(move):
+                    print(f"bestmove {move.uci()}")
+                    break
 
 
 if __name__ == "__main__":
