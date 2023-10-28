@@ -34,7 +34,9 @@ def main():
             print("readyok")
         if cmd == "stop":
             pass
-        if cmd.startswith("position"):
+        if cmd.startswith("position fen"):
+            board.set_fen(cmd.split(" ", 2)[-1])
+        elif cmd.startswith("position"):
             board.set_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
             moves = cmd.split(" ")[3:]
             for move in moves:
