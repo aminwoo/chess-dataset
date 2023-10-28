@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_filters", type=int, default=128)
     parser.add_argument("--num_residual_blocks", type=int, default=10)
     parser.add_argument("--se_ratio", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=1e-4)
+    parser.add_argument("--learning_rate", type=float, default=5e-5)
     parser.add_argument("--no_constrain_norms", action="store_true")
     parser.add_argument("--max_grad_norm", type=float, default=5.6)
     parser.add_argument("--mixed_precision", action="store_true")
@@ -56,6 +56,8 @@ if __name__ == "__main__":
         value_loss_weight=args.value_loss_weight,
         moves_left_loss_weight=args.moves_left_loss_weight,
     )
+    model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/my_checkpoint').expect_partial()
+
     if args.optimizer == "lion":
         try:
             from lion_tf import Lion
@@ -80,9 +82,11 @@ if __name__ == "__main__":
         callbacks.append(tf.keras.callbacks.LearningRateScheduler(scheduler, verbose=1))
     if args.save_dir is not None:
         args.save_dir.mkdir(exist_ok=True, parents=True)
-        checkpoint_path = args.save_dir / "checkpoint"
+        checkpoint_path = args.save_dir / "training_1/cp.ckpt"
         callbacks.append(
-            tf.keras.callbacks.experimental.BackupAndRestore(checkpoint_path)
+            tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
+                                               save_weights_only=True,
+                                               verbose=1)
         )
     if args.tensorboard_dir is not None:
         args.tensorboard_dir.mkdir(exist_ok=True, parents=True)
@@ -91,6 +95,7 @@ if __name__ == "__main__":
                 log_dir=args.tensorboard_dir, update_freq="batch", histogram_freq=1
             )
         )
+
     model.compile(optimizer=optimizer, jit_compile=True)
     array_shapes = [
         tuple([args.batch_size] + list(shape)) for shape in ARRAY_SHAPES_WITHOUT_BATCH
@@ -109,5 +114,4 @@ if __name__ == "__main__":
         callable_gen, output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    model.fit(dataset, epochs=99, steps_per_epoch=8192, callbacks=callbacks)
-    model.save_weights('./checkpoints/my_checkpoint')
+    model.fit(dataset, epochs=3, steps_per_epoch=2 ** 16, callbacks=callbacks)

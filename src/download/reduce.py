@@ -11,6 +11,7 @@ def filter(x):
     for i in x:
         if i["rules"] != "chess" or i["initial_setup"] != "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1":
             continue
+
         for j in remove_columns:
             if j in i:
                 i.pop(j)
@@ -34,7 +35,7 @@ if __name__ == "__main__":
 
     for user in games:
         game_count += len(games[user])
-        with open(f"../data/games/{user}.json", "w") as f:
+        with open(f"../../data/games/{user}.json", "w") as f:
             json.dump(games[user], f)
 
     print(game_count)

@@ -19,7 +19,7 @@ def main():
         moves_left_loss_weight=0.5,
     )
 
-    model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/my_checkpoint').expect_partial()
+    model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/training_1/cp.ckpt').expect_partial()
     board = chess.Board()
 
     cmd = ""
