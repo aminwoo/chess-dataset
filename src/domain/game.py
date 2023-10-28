@@ -24,7 +24,6 @@ class Game:
         planes = board2planes(self.board)
         move = self.moves[self.move_ptr]
         moves_left = len(self.moves) - self.move_ptr
-        legal_moves = list(self.board.legal_moves)
         self.board.push(move)
 
         if self.move_ptr % 2 == 0:
@@ -35,23 +34,12 @@ class Game:
             them = self.white
             move = mirrorMove(move)
 
-        policy = np.full(len(policy_index), -1)
+        policy = np.zeros(len(policy_index))
         move_uci = move.uci()
         if move_uci[-1] == 'n':
             move_uci = move_uci[:-1]
 
         policy[policy_index.index(move_uci)] = 1
-
-        def move2idx(x):
-            if self.move_ptr % 2:
-                x = mirrorMove(x)
-            uci_str = x.uci()
-            if uci_str[-1] == 'n':
-                uci_str = uci_str[:-1]
-            return policy_index.index(uci_str)
-
-        legal_moves = map(move2idx, legal_moves)
-        policy[list(legal_moves)] = 0
 
         if us['result'] == 'win':
             wdl = (1, 0, 0)
