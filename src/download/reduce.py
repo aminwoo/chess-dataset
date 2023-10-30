@@ -12,6 +12,16 @@ def filter(x):
         if i["rules"] != "chess" or i["initial_setup"] != "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1":
             continue
 
+        time = 0
+        if "/" in i["time_control"]:
+            time = int(i["time_control"].split("/")[-1])
+        elif "+" in i["time_control"]:
+            time = int(i["time_control"].split("+")[0])
+        else:
+            time = int(i["time_control"])
+        if time < 180:
+            continue
+
         for j in remove_columns:
             if j in i:
                 i.pop(j)

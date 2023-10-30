@@ -48,7 +48,7 @@ def download_archives(urls):
 
     for player in urls:
         for url in tqdm(urls[player]):
-            s3path = f"archives/{player}/{'-'.join(url.split('/')[-2:])}.json"
+            s3path = f"archives/{player.lower()}/{'-'.join(url.split('/')[-2:])}.json"
             if s3path in existing_paths:
                 continue
 

@@ -49,7 +49,7 @@ class Game:
             wdl = (0, 1, 0)
 
         self.move_ptr += 1
-        return planes, policy, wdl, moves_left
+        return planes, policy, wdl, moves_left, us
 
 
 if __name__ == '__main__':
@@ -61,11 +61,11 @@ if __name__ == '__main__':
 
     print(len(policy_index))
     results = set()
-    for i in data['games']:
+    for i in data:
         results.add(i['white']['result'])
         results.add(i['black']['result'])
     print(results)
-    game = Game(data['games'][0]['tcn'], data['games'][0]['white'], data['games'][0]['black'])
+    game = Game(data[0]['tcn'], data[0]['white'], data[0]['black'])
     while not game.over():
-        planes, policy, wdl, moves_left = game.next()
-        print(planes.shape)
+        planes, policy, wdl, moves_left, us = game.next()
+        print(us)

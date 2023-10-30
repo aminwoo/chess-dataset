@@ -44,6 +44,7 @@ def main():
         if cmd.startswith("go"):
             planes = board2planes(board)
             policy_out, value_out, moves_left_out = model(planes)
+            print(tf.nn.softmax(value_out))
             for i in tf.argsort(policy_out, direction="DESCENDING")[0]:
                 move_uci = policy_index[int(i)]
                 move = chess.Move.from_uci(move_uci)
@@ -51,7 +52,7 @@ def main():
                     move = mirrorMove(move)
                 if board.is_legal(move):
                     print(f"bestmove {move.uci()}")
-                    break
+                    #break
 
 
 if __name__ == "__main__":

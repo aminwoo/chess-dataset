@@ -23,7 +23,7 @@ class Loader:
             if self.game_ptr >= len(self.games):
                 return False
 
-            planes[data_ptr], policy[data_ptr], wdl[data_ptr], moves_left[data_ptr] = self.games[self.game_ptr].next()
+            planes[data_ptr], policy[data_ptr], wdl[data_ptr], moves_left[data_ptr], us = self.games[self.game_ptr].next()
             data_ptr += 1
 
         idx = np.random.permutation(batch_size)
@@ -37,7 +37,3 @@ if __name__ == "__main__":
     loader = Loader(data)
     while loader.get():
         pass
-    '''a = np.array([[1, 1, 1], [2, 2, 2], [3, 3, 3]])
-    idx = np.random.permutation(3)
-    print(idx)
-    print(a[idx])'''
