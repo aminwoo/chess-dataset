@@ -60,6 +60,7 @@ if __name__ == "__main__":
         value_loss_weight=args.value_loss_weight,
         moves_left_loss_weight=args.moves_left_loss_weight,
     )
+    # model.load_weights("checkpoints/training_1/cp.ckpt").expect_partial()
 
     if args.optimizer == "lion":
         try:
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     paths = glob.glob("data/games/*")
     for path in paths:
         with open(path) as f:
-            games = json.load(f.read())
+            games = json.load(f)
         for game in games:
             if "tcn" in game:
                 moves += len(game["tcn"]) / 2

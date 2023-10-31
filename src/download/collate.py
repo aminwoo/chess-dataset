@@ -66,4 +66,4 @@ if __name__ == "__main__":
         game_count += len(games[user])
         with open(f"../../data/games/{user}.json", "w", encoding="utf-8") as f:
             json.dump(games[user], f)
-    print(game_count)
+    print("Total number of games:", game_count)

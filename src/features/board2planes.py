@@ -6,40 +6,6 @@ from src.features.policy_index import policy_index
 import re
 
 MOVE_MAP = dict(list(zip(policy_index, range(len(policy_index)))))
-
-W_PAWN = chess.Piece(chess.PAWN, chess.WHITE)
-W_KNIGHT = chess.Piece(chess.KNIGHT, chess.WHITE)
-W_BISHOP = chess.Piece(chess.BISHOP, chess.WHITE)
-W_ROOK = chess.Piece(chess.ROOK, chess.WHITE)
-W_QUEEN = chess.Piece(chess.QUEEN, chess.WHITE)
-W_KING = chess.Piece(chess.KING, chess.WHITE)
-B_PAWN = chess.Piece(chess.PAWN, chess.BLACK)
-B_KNIGHT = chess.Piece(chess.KNIGHT, chess.BLACK)
-B_BISHOP = chess.Piece(chess.BISHOP, chess.BLACK)
-B_ROOK = chess.Piece(chess.ROOK, chess.BLACK)
-B_QUEEN = chess.Piece(chess.QUEEN, chess.BLACK)
-B_KING = chess.Piece(chess.KING, chess.BLACK)
-
-
-def assign_piece(planes, piece_step, row, col):
-    planes[piece_step][row][col] = 1
-
-
-DISPATCH = {
-    str(W_PAWN): lambda retval, row, col: assign_piece(retval, 0, row, col),
-    str(W_KNIGHT): lambda retval, row, col: assign_piece(retval, 1, row, col),
-    str(W_BISHOP): lambda retval, row, col: assign_piece(retval, 2, row, col),
-    str(W_ROOK): lambda retval, row, col: assign_piece(retval, 3, row, col),
-    str(W_QUEEN): lambda retval, row, col: assign_piece(retval, 4, row, col),
-    str(W_KING): lambda retval, row, col: assign_piece(retval, 5, row, col),
-    str(B_PAWN): lambda retval, row, col: assign_piece(retval, 6, row, col),
-    str(B_KNIGHT): lambda retval, row, col: assign_piece(retval, 7, row, col),
-    str(B_BISHOP): lambda retval, row, col: assign_piece(retval, 8, row, col),
-    str(B_ROOK): lambda retval, row, col: assign_piece(retval, 9, row, col),
-    str(B_QUEEN): lambda retval, row, col: assign_piece(retval, 10, row, col),
-    str(B_KING): lambda retval, row, col: assign_piece(retval, 11, row, col),
-}
-
 MOVE_RE = re.compile(r"^([a-h])(\d)([a-h])(\d)(.*)$")
 
 
@@ -60,38 +26,57 @@ def mirrorMove(move):
 
 def append_plane(planes, ones):
     if ones:
-        return np.append(planes, np.ones((1, 8, 8), dtype=float), axis=0)
+        return np.append(planes, np.ones((1, 64), dtype=float), axis=0)
     else:
-        return np.append(planes, np.zeros((1, 8, 8), dtype=float), axis=0)
+        return np.append(planes, np.zeros((1, 64), dtype=float), axis=0)
 
 
 def board2planes(board_):
+    board = board_.copy()
+    repetitions = []
+    for i in range(8):
+        repetitions.append(board.is_repetition(count=2))
+        if board.move_stack:
+            board.pop()
+
     if not board_.turn:
-        board = board_.mirror()
+        board = board_.mirror().copy()
     else:
-        board = board_
+        board = board_.copy()
 
-    retval = np.zeros((13, 8, 8), dtype=float)
-    for row in range(8):
-        for col in range(8):
-            piece = str(board.piece_at(chess.SQUARES[row * 8 + col]))
-            if piece != "None":
-                DISPATCH[piece](retval, row, col)
+    planes = np.zeros((104, 64), dtype=float)
+    for i in range(8):
+        base = i * 13
+        planes[base + 0][list(board.pieces(chess.PAWN, board.turn))] = 1
+        planes[base + 1][list(board.pieces(chess.KNIGHT, board.turn))] = 1
+        planes[base + 2][list(board.pieces(chess.BISHOP, board.turn))] = 1
+        planes[base + 3][list(board.pieces(chess.ROOK, board.turn))] = 1
+        planes[base + 4][list(board.pieces(chess.QUEEN, board.turn))] = 1
+        planes[base + 5][list(board.pieces(chess.KING, board.turn))] = 1
 
-    temp = np.copy(retval)
-    for i in range(7):
-        retval = np.append(retval, temp, axis=0)
+        planes[base + 6][list(board.pieces(chess.PAWN, not board.turn))] = 1
+        planes[base + 7][list(board.pieces(chess.KNIGHT, not board.turn))] = 1
+        planes[base + 8][list(board.pieces(chess.BISHOP, not board.turn))] = 1
+        planes[base + 9][list(board.pieces(chess.ROOK, not board.turn))] = 1
+        planes[base + 10][list(board.pieces(chess.QUEEN, not board.turn))] = 1
+        planes[base + 11][list(board.pieces(chess.KING, not board.turn))] = 1
 
-    retval = append_plane(retval, bool(board.castling_rights & chess.BB_H1))
-    retval = append_plane(retval, bool(board.castling_rights & chess.BB_A1))
-    retval = append_plane(retval, bool(board.castling_rights & chess.BB_H8))
-    retval = append_plane(retval, bool(board.castling_rights & chess.BB_A8))
-    retval = append_plane(retval, not board_.turn)
+        if repetitions[i]:
+            planes[base + 12] = 1
 
-    retval = append_plane(retval, False)
-    retval = append_plane(retval, False)
-    retval = append_plane(retval, True)
-    return np.expand_dims(retval, axis=0)
+        if board.move_stack:
+            board.pop()
+
+    planes = append_plane(planes, bool(board.castling_rights & chess.BB_A1))
+    planes = append_plane(planes, bool(board.castling_rights & chess.BB_H1))
+    planes = append_plane(planes, bool(board.castling_rights & chess.BB_A8))
+    planes = append_plane(planes, bool(board.castling_rights & chess.BB_H8))
+    planes = append_plane(planes, not board_.turn)
+
+    planes = append_plane(planes, board.ply())
+    planes = append_plane(planes, False)
+    planes = append_plane(planes, True)
+    return np.expand_dims(planes.reshape(112, 8, 8), axis=0)
 
 
 def policy2moves(board_, policy_tensor, softmax_temp=1.61):
@@ -134,8 +119,16 @@ def policy2moves(board_, policy_tensor, softmax_temp=1.61):
 
 if __name__ == "__main__":
     board = chess.Board(
-        fen="rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+        fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     )
+    board.push(chess.Move.from_uci("g1f3"))
+    board.push(chess.Move.from_uci("g8f6"))
+    board.push(chess.Move.from_uci("f3g1"))
+    board.push(chess.Move.from_uci("f6g8"))
+    board.push(chess.Move.from_uci("g1f3"))
+    #board.push(chess.Move.from_uci("g8f6"))
+    #board.push(chess.Move.from_uci("f3g1"))
+    #board.push(chess.Move.from_uci("f6g8"))
 
     start = time()
     REPS = 10000
@@ -147,4 +140,4 @@ if __name__ == "__main__":
 
     print(end - start)
     print((end - start) / REPS)
-    print(planes.shape)
+    print(planes[0][12])
