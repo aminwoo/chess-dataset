@@ -1,12 +1,12 @@
-import json
 import numpy as np
 from src.domain.game import Game
-from tqdm import tqdm
 
 
 class Loader:
     def __init__(self, data):
-        self.games = [Game(obj["tcn"], obj["white"], obj["black"]) for obj in data if "tcn" in obj]
+        self.games = [
+            Game(obj["tcn"], obj["white"], obj["black"]) for obj in data if "tcn" in obj
+        ]
         self.game_ptr = 0
 
     def get(self, batch_size=1024):
@@ -23,17 +23,14 @@ class Loader:
             if self.game_ptr >= len(self.games):
                 return False
 
-            planes[data_ptr], policy[data_ptr], wdl[data_ptr], moves_left[data_ptr], us = self.games[self.game_ptr].next()
+            (
+                planes[data_ptr],
+                policy[data_ptr],
+                wdl[data_ptr],
+                moves_left[data_ptr],
+                us,
+            ) = self.games[self.game_ptr].next()
             data_ptr += 1
 
         idx = np.random.permutation(batch_size)
         return planes[idx], policy[idx], wdl[idx], moves_left[idx]
-
-
-if __name__ == "__main__":
-    with open("../../data/games/magnuscarlsen.json") as f:
-        data = json.load(f)
-
-    loader = Loader(data)
-    while loader.get():
-        pass

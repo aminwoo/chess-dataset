@@ -25,29 +25,37 @@ def assign_piece(planes, piece_step, row, col):
     planes[piece_step][row][col] = 1
 
 
-DISPATCH = {str(W_PAWN): lambda retval, row, col: assign_piece(retval, 0, row, col),
-            str(W_KNIGHT): lambda retval, row, col: assign_piece(retval, 1, row, col),
-            str(W_BISHOP): lambda retval, row, col: assign_piece(retval, 2, row, col),
-            str(W_ROOK): lambda retval, row, col: assign_piece(retval, 3, row, col),
-            str(W_QUEEN): lambda retval, row, col: assign_piece(retval, 4, row, col),
-            str(W_KING): lambda retval, row, col: assign_piece(retval, 5, row, col),
-            str(B_PAWN): lambda retval, row, col: assign_piece(retval, 6, row, col),
-            str(B_KNIGHT): lambda retval, row, col: assign_piece(retval, 7, row, col),
-            str(B_BISHOP): lambda retval, row, col: assign_piece(retval, 8, row, col),
-            str(B_ROOK): lambda retval, row, col: assign_piece(retval, 9, row, col),
-            str(B_QUEEN): lambda retval, row, col: assign_piece(retval, 10, row, col),
-            str(B_KING): lambda retval, row, col: assign_piece(retval, 11, row, col)}
+DISPATCH = {
+    str(W_PAWN): lambda retval, row, col: assign_piece(retval, 0, row, col),
+    str(W_KNIGHT): lambda retval, row, col: assign_piece(retval, 1, row, col),
+    str(W_BISHOP): lambda retval, row, col: assign_piece(retval, 2, row, col),
+    str(W_ROOK): lambda retval, row, col: assign_piece(retval, 3, row, col),
+    str(W_QUEEN): lambda retval, row, col: assign_piece(retval, 4, row, col),
+    str(W_KING): lambda retval, row, col: assign_piece(retval, 5, row, col),
+    str(B_PAWN): lambda retval, row, col: assign_piece(retval, 6, row, col),
+    str(B_KNIGHT): lambda retval, row, col: assign_piece(retval, 7, row, col),
+    str(B_BISHOP): lambda retval, row, col: assign_piece(retval, 8, row, col),
+    str(B_ROOK): lambda retval, row, col: assign_piece(retval, 9, row, col),
+    str(B_QUEEN): lambda retval, row, col: assign_piece(retval, 10, row, col),
+    str(B_KING): lambda retval, row, col: assign_piece(retval, 11, row, col),
+}
 
 MOVE_RE = re.compile(r"^([a-h])(\d)([a-h])(\d)(.*)$")
 
 
 def mirrorMoveUCI(move):
     m = MOVE_RE.match(move)
-    return "{}{}{}{}{}".format(m.group(1), 9 - int(m.group(2)), m.group(3), 9 - int(m.group(4)), m.group(5))
+    return "{}{}{}{}{}".format(
+        m.group(1), 9 - int(m.group(2)), m.group(3), 9 - int(m.group(4)), m.group(5)
+    )
 
 
 def mirrorMove(move):
-    return chess.Move(chess.square_mirror(move.from_square), chess.square_mirror(move.to_square), move.promotion)
+    return chess.Move(
+        chess.square_mirror(move.from_square),
+        chess.square_mirror(move.to_square),
+        move.promotion,
+    )
 
 
 def append_plane(planes, ones):
@@ -125,7 +133,9 @@ def policy2moves(board_, policy_tensor, softmax_temp=1.61):
 
 
 if __name__ == "__main__":
-    board = chess.Board(fen="rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3")
+    board = chess.Board(
+        fen="rnbqkb1r/ppp1pppp/5n2/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
+    )
 
     start = time()
     REPS = 10000

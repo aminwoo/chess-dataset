@@ -6,3 +6,5 @@ boto3
 botocore
 tqdm
 chess
+pylint
+black

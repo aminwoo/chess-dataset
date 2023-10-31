@@ -227,7 +227,8 @@ class ConvolutionalValueOrMovesLeftHead(tf.keras.layers.Layer):
             use_bias=True,
             activation="relu",
             kernel_initializer="glorot_normal",
-            name="fc2")
+            name="fc2",
+        )
 
         self.fc_out = tf.keras.layers.Dense(
             output_dim,
@@ -293,7 +294,6 @@ class CoatnetSelfAttention(tf.keras.layers.Layer):
         print()
 
     def call(self, inputs):
-
         normalized_input = self.layernorm(inputs)
         qkv = normalized_input @ self.qkv_weights
         query, key, value = tf.split(qkv, 3, axis=-1)

@@ -1,16 +1,18 @@
-from src.models.tf_net import LeelaZeroNet
-import tensorflow as tf
-from argparse import ArgumentParser
+import json
+import glob
 from pathlib import Path
+from argparse import ArgumentParser
+import tensorflow as tf
+from src.models.tf_net import LeelaZeroNet
 from src.data.data_pipeline import ARRAY_SHAPES_WITHOUT_BATCH, make_callable
 
 
 def get_schedule_function(
-        starting_lr, reduce_lr_every_n_epochs, reduce_lr_factor, min_learning_rate
+    starting_lr, reduce_lr_every_n_epochs, reduce_lr_factor, min_learning_rate
 ):
-    def scheduler(epoch, lr):
+    def scheduler(epoch):
         num_reductions = int(epoch // reduce_lr_every_n_epochs)
-        reduction_factor = reduce_lr_factor ** num_reductions
+        reduction_factor = reduce_lr_factor**num_reductions
         return max(min_learning_rate, starting_lr / reduction_factor)
 
     return scheduler
@@ -19,8 +21,8 @@ def get_schedule_function(
 if __name__ == "__main__":
     parser = ArgumentParser()
     # These parameters control the net and the training process
-    parser.add_argument("--num_filters", type=int, default=512)
-    parser.add_argument("--num_residual_blocks", type=int, default=15)
+    parser.add_argument("--num_filters", type=int, default=256)
+    parser.add_argument("--num_residual_blocks", type=int, default=10)
     parser.add_argument("--se_ratio", type=int, default=8)
     parser.add_argument("--learning_rate", type=float, default=1e-4)
     parser.add_argument("--no_constrain_norms", action="store_true")
@@ -35,9 +37,11 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--batch_size", type=int, default=1024)
     parser.add_argument("--num_workers", type=int, default=16)
-    parser.add_argument("--shuffle_buffer_size", type=int, default=2 ** 19)
+    parser.add_argument("--shuffle_buffer_size", type=int, default=2**19)
     parser.add_argument("--skip_factor", type=int, default=32)
-    parser.add_argument("--optimizer", type=str, choices=["adam", "lion"], default="adam")
+    parser.add_argument(
+        "--optimizer", type=str, choices=["adam", "lion"], default="adam"
+    )
     # These parameters control the loss calculation. They should not be changed unless you
     # know what you're doing, as the loss values you get will not be comparable with other
     # people's unless they are kept at the defaults.
@@ -56,7 +60,6 @@ if __name__ == "__main__":
         value_loss_weight=args.value_loss_weight,
         moves_left_loss_weight=args.moves_left_loss_weight,
     )
-    model.load_weights('C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/training_1/cp.ckpt').expect_partial()
 
     if args.optimizer == "lion":
         try:
@@ -68,7 +71,9 @@ if __name__ == "__main__":
             )
         optimizer = Lion(args.learning_rate, global_clipnorm=args.max_grad_norm)
     else:
-        optimizer = tf.keras.optimizers.Adam(args.learning_rate, global_clipnorm=args.max_grad_norm)
+        optimizer = tf.keras.optimizers.Adam(
+            args.learning_rate, global_clipnorm=args.max_grad_norm
+        )
     if args.mixed_precision:
         optimizer = tf.keras.mixed_precision.LossScaleOptimizer(optimizer)
     callbacks = []
@@ -84,9 +89,9 @@ if __name__ == "__main__":
         args.save_dir.mkdir(exist_ok=True, parents=True)
         checkpoint_path = args.save_dir / "training_1/cp.ckpt"
         callbacks.append(
-            tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                               save_weights_only=True,
-                                               verbose=1)
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=checkpoint_path, save_weights_only=True, verbose=1
+            )
         )
     if args.tensorboard_dir is not None:
         args.tensorboard_dir.mkdir(exist_ok=True, parents=True)
@@ -114,4 +119,19 @@ if __name__ == "__main__":
         callable_gen, output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    model.fit(dataset, epochs=99, steps_per_epoch=2 ** 16, callbacks=callbacks)
+    moves = 0
+    paths = glob.glob("data/games/*")
+    for path in paths:
+        with open(path) as f:
+            games = json.load(f.read())
+        for game in games:
+            if "tcn" in game:
+                moves += len(game["tcn"]) / 2
+
+    print("steps_per_epoch:", int(moves / args.batch_size))
+    model.fit(
+        dataset,
+        epochs=99,
+        steps_per_epoch=int(moves / args.batch_size),
+        callbacks=callbacks,
+    )
