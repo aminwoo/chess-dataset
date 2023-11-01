@@ -3,6 +3,22 @@ import tensorflow as tf
 from src.features import lc0_az_policy_map
 
 
+def mish(x):
+    """Mish activation function.
+
+    Args:
+        x: Input tensor.
+
+    Returns:
+        The mish activation.
+
+    Reference:
+        - [Mish: A Self Regularized Non-Monotonic
+        Activation Function](https://arxiv.org/abs/1908.08681)
+    """
+    return x * tf.math.tanh(tf.math.softplus(x))
+
+
 class L2WeightDecay(tf.keras.constraints.Constraint):
     def __init__(self, decay_rate):
         super().__init__()
@@ -70,7 +86,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None, mask=None):
         pooled = self.pooler(inputs)
-        squeezed = tf.nn.relu(pooled @ self.squeeze)
+        squeezed = mish(pooled @ self.squeeze)
         excited = squeezed @ self.excite
         excited = tf.expand_dims(
             tf.expand_dims(excited, -1), -1
@@ -109,7 +125,7 @@ class ConvBlock(tf.keras.layers.Layer):
     def call(self, inputs, training=None, mask=None):
         out = self.conv_layer(inputs)
         out = self.batchnorm(out, training=training)
-        return tf.keras.activations.relu(out)
+        return mish(out)
 
 
 class ResidualBlock(tf.keras.layers.Layer):
@@ -153,10 +169,10 @@ class ResidualBlock(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None, mask=None):
         out1 = self.conv1(inputs)
-        out1 = tf.nn.relu(self.batch_norm(out1))
+        out1 = mish(self.batch_norm(out1))
         out2 = self.conv2(out1)
         out2 = self.squeeze_excite(out2)
-        return tf.nn.relu(inputs + out2)
+        return mish(inputs + out2)
 
 
 class ConvolutionalPolicyHead(tf.keras.layers.Layer):
@@ -186,28 +202,6 @@ class ConvolutionalPolicyHead(tf.keras.layers.Layer):
         flow = self.conv(flow)
         h_conv_pol_flat = tf.reshape(flow, [-1, 80 * 8 * 8])
         return tf.matmul(h_conv_pol_flat, tf.cast(self.fc1, h_conv_pol_flat.dtype))
-
-
-class DensePolicyHead(tf.keras.layers.Layer):
-    def __init__(self, hidden_dim=128):
-        super().__init__()
-        self.fc1 = tf.keras.layers.Dense(
-            hidden_dim,
-            kernel_initializer="glorot_normal",
-            name="policy/dense1",
-            activation="relu",
-        )
-        # No constraint on the final layer, because it's not going to be followed by a batchnorm
-        self.fc_final = tf.keras.layers.Dense(
-            1858, kernel_initializer="glorot_normal", name="policy/dense"
-        )
-
-    def call(self, inputs, training=None, mask=None):
-        if tf.rank(inputs) > 2:
-            # Flatten input before proceeding
-            inputs = tf.reshape(inputs, (tf.shape(inputs)[0], -1))
-        out = self.fc1(inputs)
-        return self.fc_final(out)
 
 
 class ConvolutionalValueOrMovesLeftHead(tf.keras.layers.Layer):
@@ -242,30 +236,6 @@ class ConvolutionalValueOrMovesLeftHead(tf.keras.layers.Layer):
         flow = self.conv_block(inputs)
         flow = tf.reshape(flow, [-1, self.num_filters * 8 * 8])
         flow = self.fc2(flow)
-        return self.fc_out(flow)
-
-
-class DenseValueOrMovesLeftHead(tf.keras.layers.Layer):
-    def __init__(self, output_dim, hidden_dim, relu):
-        super().__init__()
-        self.fc1 = tf.keras.layers.Dense(
-            hidden_dim,
-            kernel_initializer="glorot_normal",
-            activation="relu",
-            name="value/dense1",
-        )
-        self.fc_out = tf.keras.layers.Dense(
-            output_dim,
-            kernel_initializer="glorot_normal",
-            name="value/dense",
-            activation="relu" if relu else None,
-        )
-
-    def call(self, inputs, training=None, mask=None):
-        if tf.rank(inputs) > 2:
-            # Flatten input before proceeding
-            inputs = tf.reshape(inputs, (tf.shape(inputs)[0], -1))
-        flow = self.fc1(inputs)
         return self.fc_out(flow)
 
 

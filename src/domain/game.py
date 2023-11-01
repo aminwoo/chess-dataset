@@ -1,7 +1,7 @@
 import chess
 import numpy as np
 from src.features.policy_index import policy_index
-from src.features.board2planes import board2planes, mirrorMove
+from src.features.board2planes import board2planes, mirror_move
 from src.domain.tcn import tcn_decode
 
 
@@ -29,10 +29,11 @@ class Game:
         else:
             us = self.black
             them = self.white
-            move = mirrorMove(move)
+            move = mirror_move(move)
 
         policy = np.zeros(len(policy_index))
         move_uci = move.uci()
+        # Knight promotions take default move
         if move_uci[-1] == "n":
             move_uci = move_uci[:-1]
 

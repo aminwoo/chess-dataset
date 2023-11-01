@@ -38,7 +38,6 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=1024)
     parser.add_argument("--num_workers", type=int, default=16)
     parser.add_argument("--shuffle_buffer_size", type=int, default=2**19)
-    parser.add_argument("--skip_factor", type=int, default=32)
     parser.add_argument(
         "--optimizer", type=str, choices=["adam", "lion"], default="adam"
     )
@@ -112,7 +111,6 @@ if __name__ == "__main__":
     callable_gen = make_callable(
         chunk_dir=args.dataset_path,
         batch_size=args.batch_size,
-        skip_factor=args.skip_factor,
         num_workers=args.num_workers,
         shuffle_buffer_size=args.shuffle_buffer_size,
     )

@@ -1,22 +1,33 @@
-import chess
-import numpy as np
+"""Input representation encoding for neural network."""
 from time import time
 from math import exp
-from src.features.policy_index import policy_index
 import re
+import chess
+import numpy as np
+from src.features.policy_index import policy_index
 
 MOVE_MAP = dict(list(zip(policy_index, range(len(policy_index)))))
 MOVE_RE = re.compile(r"^([a-h])(\d)([a-h])(\d)(.*)$")
 
 
-def mirrorMoveUCI(move):
+def mirror_move_uci(move):
+    """
+    Mirror move in uci format from other player's perspective.
+
+    :param move:
+    :return:
+    """
     m = MOVE_RE.match(move)
-    return "{}{}{}{}{}".format(
-        m.group(1), 9 - int(m.group(2)), m.group(3), 9 - int(m.group(4)), m.group(5)
-    )
+    return f"{m.group(1)}{9 - int(m.group(2))}{m.group(3)}{9 - int(m.group(4))}{m.group(5)}"
 
 
-def mirrorMove(move):
+def mirror_move(move):
+    """
+    Mirror move object to other player.
+
+    :param move:
+    :return:
+    """
     return chess.Move(
         chess.square_mirror(move.from_square),
         chess.square_mirror(move.to_square),
@@ -25,6 +36,13 @@ def mirrorMove(move):
 
 
 def append_plane(planes, ones):
+    """
+    Append plane of all ones or all zeros.
+
+    :param planes:
+    :param ones:
+    :return:
+    """
     if ones:
         return np.append(planes, np.ones((1, 64), dtype=float), axis=0)
     else:
@@ -32,6 +50,17 @@ def append_plane(planes, ones):
 
 
 def board2planes(board_):
+    """
+    Takes a chess board and returns stacked planes
+    which is used as the encoding representation for the neural network.
+
+    First planes are piece placements.
+
+
+
+    :param board_:
+    :return:
+    """
     board = board_.copy()
     repetitions = []
     for i in range(8):
@@ -76,10 +105,18 @@ def board2planes(board_):
     planes = append_plane(planes, board.ply())
     planes = append_plane(planes, False)
     planes = append_plane(planes, True)
-    return np.expand_dims(planes.reshape(112, 8, 8), axis=0)
+    planes = planes.reshape(112, 8, 8)
+    return np.expand_dims(planes, axis=0)
 
 
 def policy2moves(board_, policy_tensor, softmax_temp=1.61):
+    """
+
+    :param board_:
+    :param policy_tensor:
+    :param softmax_temp:
+    :return:
+    """
     if not board_.turn:
         board = board_.mirror()
     else:
@@ -101,7 +138,7 @@ def policy2moves(board_, policy_tensor, softmax_temp=1.61):
             fixed_uci = uci[0:-1]
         # now mirror the uci
         if not board_.turn:
-            uci = mirrorMoveUCI(uci)
+            uci = mirror_move_uci(uci)
         p = policy[0][MOVE_MAP[fixed_uci]]
         retval[uci] = p
         if p > max_p:
@@ -134,10 +171,10 @@ if __name__ == "__main__":
     REPS = 10000
 
     for i in range(0, REPS):
-        planes = board2planes(board)
+        input_planes = board2planes(board)
 
     end = time()
 
     print(end - start)
     print((end - start) / REPS)
-    print(planes[0][12])
+    print(input_planes[0][12])

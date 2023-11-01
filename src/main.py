@@ -3,7 +3,7 @@ import tensorflow as tf
 from src.models.tf_net import LeelaZeroNet
 from src.features.board2planes import board2planes
 from src.features.policy_index import policy_index
-from src.features.board2planes import mirrorMove
+from src.features.board2planes import mirror_move
 
 INITIAL_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -48,7 +48,7 @@ def main():
                 move_uci = policy_index[int(i)]
                 move = chess.Move.from_uci(move_uci)
                 if board.turn == chess.BLACK:
-                    move = mirrorMove(move)
+                    move = mirror_move(move)
                 if board.is_legal(move):
                     print(f"bestmove {move.uci()}")
                     break

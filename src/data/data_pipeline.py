@@ -24,109 +24,13 @@ def file_generator(file_list, random):
                 raise RuntimeError("Unknown file type!")
 
 
-def extract_rule50_zero_one(raw):
-    # Tested equivalent but there were a lot of zeros, so I'm unsure
-    # rule50 count plane.
-    rule50_plane = (
-        raw[:, 8277 : 8277 + 1].reshape(-1, 1, 1, 1).astype(np.float32) / 99.0
-    )
-    rule50_plane = np.tile(rule50_plane, [1, 1, 8, 8])
-    # zero plane and one plane
-    zero_plane = np.zeros_like(rule50_plane)
-    one_plane = np.ones_like(rule50_plane)
-    return rule50_plane, zero_plane, one_plane
-
-
-def extract_byte_planes(raw):
-    # Checked and confirmed equivalent to the existing extract_byte_planes
-    # 5 bytes in input are expanded and tiled
-    planes = raw[:, 8272 : 8272 + 5].reshape(-1, 5, 1, 1)
-    unit_planes = np.tile(planes, [1, 1, 8, 8])
-    return unit_planes
-
-
-def extract_policy_bits(raw):
-    # Checked and confirmed equivalent to the existing extract_policy_bits
-    # Next 7432 are easy, policy extraction.
-    policy = np.ascontiguousarray(raw[:, 8 : 8 + 7432]).view(dtype=np.float32)
-    # Next are 104 bit packed chess boards, they have to be expanded.
-    bit_planes = raw[:, 7440 : 7440 + 832].reshape((-1, 104, 8))
-    bit_planes = np.unpackbits(bit_planes, axis=-1).reshape((-1, 104, 8, 8))
-    return policy, bit_planes
-
-
-def extract_outputs(raw):
-    # Checked and confirmed equivalent to the existing extract_outputs
-    # Result distribution needs to be calculated from q and d.
-    z_q = np.ascontiguousarray(raw[:, 8308 : 8308 + 4]).view(dtype=np.float32)
-    z_d = np.ascontiguousarray(raw[:, 8312 : 8312 + 4]).view(dtype=np.float32)
-    z_q_w = 0.5 * (1.0 - z_d + z_q)
-    z_q_l = 0.5 * (1.0 - z_d - z_q)
-
-    z = np.concatenate((z_q_w, z_d, z_q_l), axis=1)
-
-    # Outcome distribution needs to be calculated from q and d.
-    best_q = np.ascontiguousarray(raw[:, 8284 : 8284 + 4]).view(dtype=np.float32)
-    best_d = np.ascontiguousarray(raw[:, 8292 : 8292 + 4]).view(dtype=np.float32)
-    best_q_w = 0.5 * (1.0 - best_d + best_q)
-    best_q_l = 0.5 * (1.0 - best_d - best_q)
-
-    q = np.concatenate((best_q_w, best_d, best_q_l), axis=1)
-
-    ply_count = np.ascontiguousarray(raw[:, 8304 : 8304 + 4]).view(dtype=np.float32)
-    return z, q, ply_count
-
-
-def extract_inputs_outputs_if1(raw):
-    # first 4 bytes in each batch entry are boring.
-    # Next 4 change how we construct some of the unit planes.
-    policy, bit_planes = extract_policy_bits(raw)
-
-    # Next 5 are castling + stm, all of which simply copy the byte value to all squares.
-    unit_planes = extract_byte_planes(raw).astype(np.float32)
-
-    rule50_plane, zero_plane, one_plane = extract_rule50_zero_one(raw)
-
-    inputs = np.concatenate(
-        [bit_planes, unit_planes, rule50_plane, zero_plane, one_plane], 1
-    ).reshape([-1, 112, 64])
-
-    z, q, ply_count = extract_outputs(raw)
-
-    return inputs, policy, z, q, ply_count
-
-
-def offset_generator(batch_size, record_size, skip_factor, random):
-    # The offset generator is a generator that yields batch_size random offsets
-    # from a range up to batch_size * skip_factor
-    initial_offset = 0
-    rng = default_rng()
-    while True:
-        if random:
-            retained_indices = rng.choice(
-                batch_size * skip_factor, size=batch_size, replace=False
-            )
-        else:
-            retained_indices = np.array([i * skip_factor for i in range(batch_size)])
-        retained_indices = np.sort(retained_indices)
-        next_offset = (
-            batch_size * skip_factor - retained_indices[-1]
-        )  # Bump us up to the end of the current skip-batch
-        skip_offsets = np.diff(retained_indices, prepend=0)
-        skip_offsets[0] += initial_offset
-        for offset in skip_offsets:
-            yield offset * record_size
-        initial_offset = next_offset
-
-
 def data_worker(
-    files,
-    batch_size,
-    skip_factor,
-    array_ready_event,
-    main_process_access_event,
-    shared_array_names,
-    validation,
+        files,
+        batch_size,
+        array_ready_event,
+        main_process_access_event,
+        shared_array_names,
+        validation,
 ):
     shared_mem = [SharedMemory(name=name, create=False) for name in shared_array_names]
     array_shapes = [[batch_size] + list(shape) for shape in ARRAY_SHAPES_WITHOUT_BATCH]
@@ -151,12 +55,11 @@ def data_worker(
 
 
 def multiprocess_generator(
-    chunk_dir,
-    batch_size,
-    num_workers,
-    skip_factor,
-    shuffle_buffer_size,
-    validation=False,
+        chunk_dir,
+        batch_size,
+        num_workers,
+        shuffle_buffer_size,
+        validation=False,
 ):
     assert shuffle_buffer_size % batch_size == 0  # This simplifies my life later on
     print("Scanning directory for game data chunks...")
@@ -207,7 +110,6 @@ def multiprocess_generator(
             target=data_worker,
             kwargs={
                 "files": worker_file_lists[i],
-                "skip_factor": skip_factor,
                 "batch_size": batch_size,
                 "array_ready_event": array_ready_event,
                 "main_process_access_event": main_process_access_event,
@@ -222,14 +124,14 @@ def multiprocess_generator(
         proc = i % num_workers
         array_ready_events[proc].wait()
         for array, shuffle_buffer in zip(shared_arrays[proc], shuffle_buffers):
-            shuffle_buffer[i * batch_size : (i + 1) * batch_size] = array
+            shuffle_buffer[i * batch_size: (i + 1) * batch_size] = array
         array_ready_events[proc].clear()
         main_process_access_events[proc].set()
 
     rng = default_rng()
     while True:
         for array_ready_event, main_process_access_event, shared_arrs in zip(
-            array_ready_events, main_process_access_events, shared_arrays
+                array_ready_events, main_process_access_events, shared_arrays
         ):
             if not array_ready_event.is_set():
                 continue
@@ -247,14 +149,13 @@ def multiprocess_generator(
             main_process_access_event.set()
 
 
-def make_callable(chunk_dir, batch_size, num_workers, skip_factor, shuffle_buffer_size):
+def make_callable(chunk_dir, batch_size, num_workers, shuffle_buffer_size):
     # Because tf.data needs to be able to reinitialize
     def return_gen():
         return multiprocess_generator(
             chunk_dir=chunk_dir,
             batch_size=batch_size,
             num_workers=num_workers,
-            skip_factor=skip_factor,
             shuffle_buffer_size=shuffle_buffer_size,
         )
 
@@ -267,13 +168,11 @@ def main():
     test_dir = Path("../../data/games")
     batch_size = 1024
     num_workers = 16
-    shuffle_buffer_size = 2**11
-    skip_factor = 32
+    shuffle_buffer_size = 2 ** 15
     gen_callable = make_callable(
         chunk_dir=test_dir,
         batch_size=batch_size,
         num_workers=num_workers,
-        skip_factor=skip_factor,
         shuffle_buffer_size=shuffle_buffer_size,
     )
     array_shapes = [
