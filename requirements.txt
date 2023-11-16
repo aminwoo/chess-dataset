@@ -8,3 +8,4 @@ tqdm
 chess
 pylint
 black
+matplotlib

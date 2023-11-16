@@ -1,15 +1,21 @@
 import numpy as np
-from src.domain.game import Game
+from src.domain.game import Game, EngineConfig
 
 
 class Loader:
+    """Class to load games in batches."""
     def __init__(self, data):
         self.games = [
-            Game(obj["tcn"], obj["white"], obj["black"]) for obj in data if "tcn" in obj
+            Game(obj["tcn"], obj["white"], obj["black"], EngineConfig) for obj in data if "tcn" in obj
         ]
         self.game_ptr = 0
 
     def get(self, batch_size=1024):
+        """
+
+        :param batch_size:
+        :return:
+        """
         planes = np.zeros((batch_size, 112, 8, 8))
         policy = np.zeros((batch_size, 1858))
         wdl = np.zeros((batch_size, 3))
@@ -27,8 +33,7 @@ class Loader:
                 planes[data_ptr],
                 policy[data_ptr],
                 wdl[data_ptr],
-                moves_left[data_ptr],
-                us,
+                moves_left[data_ptr]
             ) = self.games[self.game_ptr].next()
             data_ptr += 1
 

@@ -19,7 +19,7 @@ def main():
         moves_left_loss_weight=0.5,
     )
 
-    model.load_weights("../checkpoints/training_1/cp.ckpt").expect_partial()
+    model.load_weights("C:/Users/benwo/PycharmProjects/blunderfish/checkpoints/training_1/cp.ckpt").expect_partial()
     board = chess.Board()
 
     cmd = ""
@@ -36,22 +36,26 @@ def main():
         if cmd.startswith("position"):
             args = cmd.split(" ")[1:]
             if args[0] == "fen":
-                board.set_fen(" ".join(args[1:]))
+                board = chess.Board(fen=" ".join(args[1:]))
             else:
-                board.set_fen(INITIAL_FEN)
+                board = chess.Board(fen=INITIAL_FEN)
                 for move in args[2:]:
                     board.push(chess.Move.from_uci(move))
         if cmd.startswith("go"):
             planes = board2planes(board)
+            import sys
+            import numpy
+            numpy.set_printoptions(threshold=sys.maxsize)
+            print(planes)
             policy_out, _, _ = model(planes)
             for i in tf.argsort(policy_out, direction="DESCENDING")[0]:
                 move_uci = policy_index[int(i)]
                 move = chess.Move.from_uci(move_uci)
                 if board.turn == chess.BLACK:
                     move = mirror_move(move)
-                if board.is_legal(move):
-                    print(f"bestmove {move.uci()}")
-                    break
+                #if board.is_legal(move):
+                print(f"bestmove {move.uci()}")
+                break
 
 
 if __name__ == "__main__":

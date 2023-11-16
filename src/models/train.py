@@ -24,7 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_filters", type=int, default=256)
     parser.add_argument("--num_residual_blocks", type=int, default=10)
     parser.add_argument("--se_ratio", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=1e-4)
+    parser.add_argument("--learning_rate", type=float, default=3e-4)
     parser.add_argument("--no_constrain_norms", action="store_true")
     parser.add_argument("--max_grad_norm", type=float, default=5.6)
     parser.add_argument("--mixed_precision", action="store_true")
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # These parameters control the data pipeline
     parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--batch_size", type=int, default=1024)
-    parser.add_argument("--num_workers", type=int, default=16)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--shuffle_buffer_size", type=int, default=2**19)
     parser.add_argument(
         "--optimizer", type=str, choices=["adam", "lion"], default="adam"
@@ -45,8 +45,8 @@ if __name__ == "__main__":
     # know what you're doing, as the loss values you get will not be comparable with other
     # people's unless they are kept at the defaults.
     parser.add_argument("--policy_loss_weight", type=float, default=1.0)
-    parser.add_argument("--value_loss_weight", type=float, default=1.6)
-    parser.add_argument("--moves_left_loss_weight", type=float, default=0.5)
+    parser.add_argument("--value_loss_weight", type=float, default=1.0)
+    parser.add_argument("--moves_left_loss_weight", type=float, default=0.01)
     args = parser.parse_args()
     if args.mixed_precision:
         tf.keras.mixed_precision.set_global_policy("mixed_float16")
@@ -59,7 +59,7 @@ if __name__ == "__main__":
         value_loss_weight=args.value_loss_weight,
         moves_left_loss_weight=args.moves_left_loss_weight,
     )
-    # model.load_weights("checkpoints/training_1/cp.ckpt").expect_partial()
+    model.load_weights("checkpoints/training_1/cp.ckpt").expect_partial()
 
     if args.optimizer == "lion":
         try:

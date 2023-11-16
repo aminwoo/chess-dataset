@@ -61,21 +61,13 @@ def board2planes(board_):
     :param board_:
     :return:
     """
+
     board = board_.copy()
-    repetitions = []
-    for i in range(8):
-        repetitions.append(board.is_repetition(count=2))
-        if board.move_stack:
-            board.pop()
-
-    if not board_.turn:
-        board = board_.mirror().copy()
-    else:
-        board = board_.copy()
-
     planes = np.zeros((104, 64), dtype=float)
+
     for i in range(8):
         base = i * 13
+
         planes[base + 0][list(board.pieces(chess.PAWN, board.turn))] = 1
         planes[base + 1][list(board.pieces(chess.KNIGHT, board.turn))] = 1
         planes[base + 2][list(board.pieces(chess.BISHOP, board.turn))] = 1
@@ -90,19 +82,31 @@ def board2planes(board_):
         planes[base + 10][list(board.pieces(chess.QUEEN, not board.turn))] = 1
         planes[base + 11][list(board.pieces(chess.KING, not board.turn))] = 1
 
-        if repetitions[i]:
+        if not board_.turn:
+            for j in range(12):
+                flipped = np.flip(planes[base + j].reshape(8, 8), axis=0)
+                planes[base + j] = flipped.reshape(64)
+
+        if board.is_repetition(count=2):
             planes[base + 12] = 1
 
         if board.move_stack:
             board.pop()
 
-    planes = append_plane(planes, bool(board.castling_rights & chess.BB_A1))
-    planes = append_plane(planes, bool(board.castling_rights & chess.BB_H1))
-    planes = append_plane(planes, bool(board.castling_rights & chess.BB_A8))
-    planes = append_plane(planes, bool(board.castling_rights & chess.BB_H8))
+    if not board_.turn:
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_A8))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_H8))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_A1))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_H1))
+    else:
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_A1))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_H1))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_A8))
+        planes = append_plane(planes, bool(board.castling_rights & chess.BB_H8))
+
     planes = append_plane(planes, not board_.turn)
 
-    planes = append_plane(planes, board.ply())
+    planes = append_plane(planes, False)
     planes = append_plane(planes, False)
     planes = append_plane(planes, True)
     planes = planes.reshape(112, 8, 8)
@@ -158,11 +162,11 @@ if __name__ == "__main__":
     board = chess.Board(
         fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     )
+    board.push(chess.Move.from_uci("e2e4"))
+    board.push(chess.Move.from_uci("e7e5"))
     board.push(chess.Move.from_uci("g1f3"))
-    board.push(chess.Move.from_uci("g8f6"))
-    board.push(chess.Move.from_uci("f3g1"))
-    board.push(chess.Move.from_uci("f6g8"))
-    board.push(chess.Move.from_uci("g1f3"))
+    #board.push(chess.Move.from_uci("f6g8"))
+    #board.push(chess.Move.from_uci("g1f3"))
     #board.push(chess.Move.from_uci("g8f6"))
     #board.push(chess.Move.from_uci("f3g1"))
     #board.push(chess.Move.from_uci("f6g8"))
@@ -177,4 +181,4 @@ if __name__ == "__main__":
 
     print(end - start)
     print((end - start) / REPS)
-    print(input_planes[0][12])
+    print(input_planes[0][0])

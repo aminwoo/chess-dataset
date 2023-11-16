@@ -32,11 +32,8 @@ def filter_games(x):
         ):
             continue
 
-        if "/" in i["time_control"]:  # Ignore daily games
-            continue
-        if (
-            int(i["time_control"].split("+")[0]) < 180
-        ):  # Ignore games less than 3 minutes
+        # Ignore games less than 1 minute
+        if "/" not in i["time_control"] and int(i["time_control"].split("+")[0]) < 60:
             continue
 
         for j in remove_columns:
