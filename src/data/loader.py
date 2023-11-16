@@ -1,12 +1,15 @@
 import numpy as np
+import chess
+
 from src.domain.game import Game, EngineConfig
 
 
 class Loader:
     """Class to load games in batches."""
-    def __init__(self, data):
+    def __init__(self, data, engine_config: EngineConfig = None):
+        self.engine = chess.engine.SimpleEngine.popen_uci(engine_config.path) if engine_config else None
         self.games = [
-            Game(obj["tcn"], obj["white"], obj["black"], EngineConfig) for obj in data if "tcn" in obj
+            Game(obj["tcn"], obj["white"], obj["black"], self.engine) for obj in data if "tcn" in obj
         ]
         self.game_ptr = 0
 

@@ -17,13 +17,13 @@ class EngineConfig:
 
 class Game:
     """This class represents one chess game and provides methods to load the positions."""
-    def __init__(self, tcn_moves, white_info, black_info, engine_config: EngineConfig = None):
+    def __init__(self, tcn_moves, white_info, black_info, engine):
         self.moves = tcn_decode(tcn_moves)
         self.white_info = white_info
         self.black_info = black_info
         self.board = chess.Board()
         self.move_ptr = 0
-        self.engine = chess.engine.SimpleEngine.popen_uci(engine_config.path) if engine_config else None
+        self.engine = engine
 
     def over(self) -> bool:
         """

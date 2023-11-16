@@ -1,12 +1,14 @@
-import numpy as np
-from pathlib import Path
-from random import shuffle
-from tqdm import tqdm, trange
 import json
 from multiprocessing import get_context
 from multiprocessing.shared_memory import SharedMemory
+from pathlib import Path
+from random import shuffle
+import numpy as np
+
+from tqdm import tqdm, trange
 from numpy.random import default_rng
 from src.data.loader import Loader
+from src.domain.game import EngineConfig
 
 ARRAY_SHAPES_WITHOUT_BATCH = [(112, 8, 8), (1858,), (3,), (1,)]
 
@@ -39,12 +41,12 @@ def data_worker(
         for shape, mem in zip(array_shapes, shared_mem)
     ]
     file_gen = file_generator(files, random=not validation)
-    loader = Loader(next(file_gen))
+    loader = Loader(next(file_gen), EngineConfig)
 
     while True:
         processed_batch = loader.get()
         if not processed_batch:
-            loader = Loader(next(file_gen))
+            loader = Loader(next(file_gen), EngineConfig)
             continue
 
         main_process_access_event.wait()

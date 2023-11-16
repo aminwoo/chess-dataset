@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # These parameters control the data pipeline
     parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--batch_size", type=int, default=1024)
-    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--num_workers", type=int, default=1)
     parser.add_argument("--shuffle_buffer_size", type=int, default=2**19)
     parser.add_argument(
         "--optimizer", type=str, choices=["adam", "lion"], default="adam"
