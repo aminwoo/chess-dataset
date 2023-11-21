@@ -1,10 +1,10 @@
-import json
-import glob
 from pathlib import Path
 from argparse import ArgumentParser
 import tensorflow as tf
+
 from src.models.tf_net import LeelaZeroNet
 from src.data.data_pipeline import ARRAY_SHAPES_WITHOUT_BATCH, make_callable
+from src.domain.game import EngineConfig
 
 
 def get_schedule_function(
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # These parameters control the data pipeline
     parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--batch_size", type=int, default=1024)
-    parser.add_argument("--num_workers", type=int, default=1)
+    parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument("--shuffle_buffer_size", type=int, default=2**19)
     parser.add_argument(
         "--optimizer", type=str, choices=["adam", "lion"], default="adam"
@@ -113,24 +113,15 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         shuffle_buffer_size=args.shuffle_buffer_size,
+        engine_config=EngineConfig,
     )
     dataset = tf.data.Dataset.from_generator(
         callable_gen, output_signature=output_signature
     ).prefetch(tf.data.AUTOTUNE)
 
-    moves = 0
-    paths = glob.glob("data/games/*")
-    for path in paths:
-        with open(path) as f:
-            games = json.load(f)
-        for game in games:
-            if "tcn" in game:
-                moves += len(game["tcn"]) / 2
-
-    print("steps_per_epoch:", int(moves / args.batch_size))
     model.fit(
         dataset,
         epochs=99,
-        steps_per_epoch=int(moves / args.batch_size),
+        steps_per_epoch=8192,
         callbacks=callbacks,
     )

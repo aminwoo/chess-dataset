@@ -33,6 +33,7 @@ def data_worker(
         main_process_access_event,
         shared_array_names,
         validation,
+        engine_config,
 ):
     shared_mem = [SharedMemory(name=name, create=False) for name in shared_array_names]
     array_shapes = [[batch_size] + list(shape) for shape in ARRAY_SHAPES_WITHOUT_BATCH]
@@ -41,12 +42,12 @@ def data_worker(
         for shape, mem in zip(array_shapes, shared_mem)
     ]
     file_gen = file_generator(files, random=not validation)
-    loader = Loader(next(file_gen), EngineConfig)
+    loader = Loader(next(file_gen), engine_config)
 
     while True:
         processed_batch = loader.get()
         if not processed_batch:
-            loader = Loader(next(file_gen), EngineConfig)
+            loader.load(next(file_gen))
             continue
 
         main_process_access_event.wait()
@@ -62,6 +63,7 @@ def multiprocess_generator(
         num_workers,
         shuffle_buffer_size,
         validation=False,
+        engine_config=None,
 ):
     assert shuffle_buffer_size % batch_size == 0  # This simplifies my life later on
     print("Scanning directory for game data chunks...")
@@ -117,6 +119,7 @@ def multiprocess_generator(
                 "main_process_access_event": main_process_access_event,
                 "shared_array_names": shared_mem_names,
                 "validation": validation,
+                "engine_config": engine_config,
             },
             daemon=True,
         )
@@ -151,7 +154,7 @@ def multiprocess_generator(
             main_process_access_event.set()
 
 
-def make_callable(chunk_dir, batch_size, num_workers, shuffle_buffer_size):
+def make_callable(chunk_dir, batch_size, num_workers, shuffle_buffer_size, engine_config):
     # Because tf.data needs to be able to reinitialize
     def return_gen():
         return multiprocess_generator(
@@ -159,6 +162,7 @@ def make_callable(chunk_dir, batch_size, num_workers, shuffle_buffer_size):
             batch_size=batch_size,
             num_workers=num_workers,
             shuffle_buffer_size=shuffle_buffer_size,
+            engine_config=engine_config,
         )
 
     return return_gen
@@ -167,15 +171,18 @@ def make_callable(chunk_dir, batch_size, num_workers, shuffle_buffer_size):
 def main():
     import tensorflow as tf
 
+    engine_config = EngineConfig(path=r"C:\Users\benwo\PycharmProjects\blunderfish\engines\stockfish-windows-x86-64-avx2.exe")
+
     test_dir = Path("../../data/games")
     batch_size = 1024
-    num_workers = 16
+    num_workers = 4
     shuffle_buffer_size = 2 ** 15
     gen_callable = make_callable(
         chunk_dir=test_dir,
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle_buffer_size=shuffle_buffer_size,
+        engine_config=engine_config,
     )
     array_shapes = [
         tuple([batch_size] + list(shape)) for shape in ARRAY_SHAPES_WITHOUT_BATCH

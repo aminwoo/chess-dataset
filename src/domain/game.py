@@ -13,6 +13,7 @@ class EngineConfig:
     """Class to specify other engine configuration."""
     path: str = "engines/stockfish-windows-x86-64-avx2.exe"
     time: float = 0.1
+    nodes: int = 100000
 
 
 class Game:
@@ -21,9 +22,9 @@ class Game:
         self.moves = tcn_decode(tcn_moves)
         self.white_info = white_info
         self.black_info = black_info
+        self.engine = engine
         self.board = chess.Board()
         self.move_ptr = 0
-        self.engine = engine
 
     def over(self) -> bool:
         """
@@ -44,11 +45,14 @@ class Game:
         losses = 0
 
         if self.engine:
-            result = self.engine.play(self.board, chess.engine.Limit(time=0.1), info=chess.engine.INFO_SCORE)
+            result = self.engine.play(self.board, chess.engine.Limit(nodes=10000), info=chess.engine.INFO_SCORE)
             self.board.push(move)
             move = result.move
             wdl = result.info["score"].white().wdl()
             wins, draws, losses = wdl
+            wins /= wdl.total()
+            draws /= wdl.total()
+            losses /= wdl.total()
         else:
             self.board.push(move)
             if self.white_info["result"] == "win":

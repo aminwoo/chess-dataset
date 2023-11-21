@@ -36,6 +36,9 @@ def filter_games(x):
         if "/" not in i["time_control"] and int(i["time_control"].split("+")[0]) < 60:
             continue
 
+        if i["white"]["rating"] < 2500 or i["black"]["rating"] < 2500:
+            continue
+
         for j in remove_columns:
             if j in i:
                 i.pop(j)
